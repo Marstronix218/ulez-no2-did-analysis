@@ -551,6 +551,67 @@ ggplot(pre_trends_smooth, aes(x = measurement_date, y = avg_NO2_roll30, color = 
   theme_minimal(base_size = 13)
 
 
+# ------------------------------------------------------------
+# Create event time (days relative to ULEZ introduction)
+# ------------------------------------------------------------
+
+data_did <- data_did %>%
+  mutate(
+    event_time = as.numeric(measurement_date - ulez_start)
+  )
+
+
+# ------------------------------------------------------------
+# Event-study DiD specification
+# ------------------------------------------------------------
+
+did_event <- feols(
+  no2_concentration ~ 
+    i(event_time, treatment_indicator, ref = -1) |
+    site_id + measurement_date,
+  data = data_did,
+  cluster = ~site_id
+)
+
+
+# ------------------------------------------------------------
+# Event-study plot
+# ------------------------------------------------------------
+
+iplot(
+  did_event,
+  ref.line = 0,
+  xlab = "Days relative to ULEZ introduction",
+  ylab = "Effect on daily NO2 concentration (µg/m³)",
+  main = "Event-study estimates of the ULEZ effect on NO2"
+)
+
+
+# ------------------------------------------------------------
+# Bin event time into weeks
+# ------------------------------------------------------------
+
+data_did <- data_did %>%
+  mutate(
+    event_week = floor(event_time / 7)
+  )
+
+did_event_week <- feols(
+  no2_concentration ~ 
+    i(event_week, treatment_indicator, ref = -1) |
+    site_id + measurement_date,
+  data = data_did,
+  cluster = ~site_id
+)
+
+iplot(
+  did_event_week,
+  ref.line = 0,
+  xlab = "Weeks relative to ULEZ introduction",
+  ylab = "Effect on daily NO2 concentration (µg/m³)",
+  main = "Event-study estimates of the ULEZ effect on NO2"
+)
+
 
 # ------------------------------------------------------------------------------
 # Main DiD Model with fixed effects
